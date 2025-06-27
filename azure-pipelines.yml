@@ -4,16 +4,50 @@
 # https://aka.ms/yaml
 
 trigger:
-- main
+  branches:
+    include:
+      - main
 
 pool:
-  vmImage: ubuntu-latest
+  name: hostpool
+
+variables:
+  pythonVersion: '3.10'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+# 1. Checkout du code
+- task: Checkout@1
 
+# 2. Installer Python si nécessaire
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(pythonVersion)'
+    addToPath: true
+
+# 3. Installer les dépendances 
 - script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Installer les dépendances'
+
+# 4. Valider le code 
+- script: |
+    echo "Exécution des tests unitaires 
+    # pytest tests/  
+  displayName: 'Valider le code'
+
+# 5. Préparer le package pour publication
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
+    replaceExistingArchive: true
+
+# 6. Publier les artefacts pour pipeline CD
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
